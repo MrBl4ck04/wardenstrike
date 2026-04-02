@@ -1,0 +1,78 @@
+# Shodan Dorks - WardenStrike Knowledge Base
+# Usage: replace {target} with hostname/org/domain
+# Requires Shodan API key
+
+# ─── Target-specific ──────────────────────────────────────────────
+hostname:{target}
+ssl.cert.subject.cn:{target}
+ssl.cert.subject.cn:*.{target}
+http.title:{target}
+org:"{target}"
+http.html:{target}
+
+# ─── Exposed services (generic) ──────────────────────────────────
+hostname:{target} port:22
+hostname:{target} port:3389
+hostname:{target} port:5900
+hostname:{target} port:8080
+hostname:{target} port:8443
+hostname:{target} port:8888
+hostname:{target} port:9200
+hostname:{target} port:27017
+hostname:{target} port:6379
+hostname:{target} port:5432
+hostname:{target} port:3306
+hostname:{target} port:445
+hostname:{target} port:1433
+hostname:{target} port:2375
+hostname:{target} port:4848
+hostname:{target} port:8161
+
+# ─── Web technologies ─────────────────────────────────────────────
+hostname:{target} http.component:"Apache Tomcat"
+hostname:{target} http.component:"Jenkins"
+hostname:{target} http.component:"Elasticsearch"
+hostname:{target} http.component:"Kibana"
+hostname:{target} http.component:"Grafana"
+hostname:{target} http.component:"WordPress"
+hostname:{target} http.component:"Jira"
+hostname:{target} http.component:"Confluence"
+hostname:{target} http.component:"GitLab"
+hostname:{target} product:"Redis"
+hostname:{target} product:"MongoDB"
+hostname:{target} product:"MySQL"
+hostname:{target} product:"PostgreSQL"
+
+# ─── Authentication bypass / exposed panels ───────────────────────
+hostname:{target} http.title:"Dashboard"
+hostname:{target} http.title:"admin"
+hostname:{target} http.title:"Login"
+hostname:{target} http.title:"phpMyAdmin"
+hostname:{target} http.title:"Kibana"
+hostname:{target} http.title:"Grafana"
+hostname:{target} http.title:"Jenkins"
+
+# ─── Vulnerability-related ───────────────────────────────────────
+hostname:{target} vuln:CVE-2021-44228  (Log4Shell)
+hostname:{target} vuln:CVE-2021-26855  (Exchange ProxyLogon)
+hostname:{target} vuln:CVE-2019-0708   (BlueKeep)
+hostname:{target} vuln:CVE-2017-0144   (EternalBlue)
+hostname:{target} vuln:CVE-2021-34473  (ProxyShell)
+
+# ─── SSL/TLS issues ───────────────────────────────────────────────
+hostname:{target} ssl.cert.expired:true
+hostname:{target} ssl.cert.self_signed:true
+hostname:{target} ssl.version:sslv2
+hostname:{target} ssl.version:sslv3
+hostname:{target} ssl.version:tlsv1
+
+# ─── Default credentials / IoT ────────────────────────────────────
+hostname:{target} default password
+hostname:{target} "Set-Cookie: JSESSIONID"
+hostname:{target} http.title:"Router"
+hostname:{target} "Server: webcam"
+
+# ─── Cloud storage ────────────────────────────────────────────────
+hostname:{target} http.title:"S3 bucket"
+hostname:{target} "AmazonS3"
+hostname:{target} "X-Amz-"

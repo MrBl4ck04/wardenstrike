@@ -1,0 +1,119 @@
+# Google Dorks - WardenStrike Knowledge Base
+# Usage: replace {target} with target domain
+# Format: one dork per line, # = comment
+
+# ─── Admin panels ─────────────────────────────────────────────────
+site:{target} inurl:admin
+site:{target} inurl:admin/login
+site:{target} inurl:administrator
+site:{target} inurl:wp-admin
+site:{target} inurl:phpmyadmin
+site:{target} inurl:cpanel
+site:{target} inurl:webadmin
+site:{target} inurl:controlpanel
+site:{target} inurl:adminpanel
+site:{target} inurl:manage
+site:{target} intitle:"admin panel"
+site:{target} intitle:"administration"
+
+# ─── Exposed APIs ─────────────────────────────────────────────────
+site:{target} inurl:/api/
+site:{target} inurl:/api/v1
+site:{target} inurl:/api/v2
+site:{target} inurl:/swagger
+site:{target} inurl:/swagger-ui
+site:{target} inurl:swagger.json
+site:{target} inurl:openapi.json
+site:{target} inurl:api-docs
+site:{target} inurl:graphql
+site:{target} inurl:/rest/
+site:{target} inurl:wsdl
+
+# ─── Sensitive files ──────────────────────────────────────────────
+site:{target} ext:sql
+site:{target} ext:bak
+site:{target} ext:old
+site:{target} ext:log
+site:{target} ext:conf
+site:{target} ext:cfg
+site:{target} ext:ini
+site:{target} ext:env
+site:{target} ext:xml filetype:xml
+site:{target} ext:xlsx
+site:{target} ext:pem
+site:{target} ext:key
+site:{target} ext:p12
+site:{target} filetype:pdf "confidential"
+site:{target} filetype:xls "password"
+
+# ─── Configuration & secrets ─────────────────────────────────────
+site:{target} inurl:.git
+site:{target} inurl:.svn
+site:{target} inurl:.DS_Store
+site:{target} inurl:web.config
+site:{target} inurl:wp-config.php
+site:{target} inurl:config.php
+site:{target} inurl:settings.py
+site:{target} inurl:application.properties
+site:{target} inurl:database.yml
+site:{target} inurl:.htaccess
+site:{target} inurl:credentials.json
+site:{target} intext:"DB_PASSWORD"
+site:{target} intext:"database_password"
+site:{target} intext:"AWS_SECRET_ACCESS_KEY"
+site:{target} intext:"private_key"
+
+# ─── Login portals ────────────────────────────────────────────────
+site:{target} inurl:login
+site:{target} inurl:signin
+site:{target} inurl:sso
+site:{target} inurl:auth
+site:{target} inurl:oauth
+site:{target} intitle:"login"
+site:{target} intitle:"sign in"
+
+# ─── Exposed services ─────────────────────────────────────────────
+site:{target} inurl:jenkins
+site:{target} inurl:gitlab
+site:{target} inurl:jira
+site:{target} inurl:confluence
+site:{target} inurl:kibana
+site:{target} inurl:grafana
+site:{target} inurl:prometheus
+site:{target} inurl:nagios
+site:{target} inurl:zabbix
+site:{target} inurl:vpn
+site:{target} inurl:citrix
+site:{target} inurl:rdweb
+
+# ─── Error messages ───────────────────────────────────────────────
+site:{target} intext:"error" intext:"exception" intext:"stack trace"
+site:{target} intext:"Warning: mysql_"
+site:{target} intext:"Fatal error"
+site:{target} intext:"Uncaught exception"
+site:{target} intext:"Microsoft OLE DB Provider for SQL Server"
+site:{target} intext:"ORA-00933"
+site:{target} intext:"syntax error" intext:"SQL"
+site:{target} intext:"pg_query"
+site:{target} intext:"ODBC SQL Server Driver"
+
+# ─── Directory listing ────────────────────────────────────────────
+site:{target} intitle:"index of /"
+site:{target} intitle:"index of" "backup"
+site:{target} intitle:"index of" "uploads"
+site:{target} intitle:"Directory listing for"
+
+# ─── Exposed development ──────────────────────────────────────────
+site:{target} inurl:dev
+site:{target} inurl:staging
+site:{target} inurl:test
+site:{target} inurl:uat
+site:{target} inurl:debug
+site:{target} inurl:phpinfo.php
+site:{target} inurl:info.php
+site:{target} intext:"phpinfo()"
+site:{target} inurl:console
+
+# ─── Cache / CDN leaks ───────────────────────────────────────────
+cache:{target}
+site:{target} site:pastebin.com

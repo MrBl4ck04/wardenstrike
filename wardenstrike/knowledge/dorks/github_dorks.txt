@@ -1,0 +1,78 @@
+# GitHub Dorks - WardenStrike Knowledge Base
+# Usage: replace {target} with org/domain name
+# Search at: github.com/search?type=code&q=<dork>
+
+# ─── Secrets & credentials ────────────────────────────────────────
+"{target}" password
+"{target}" secret
+"{target}" api_key
+"{target}" apikey
+"{target}" access_token
+"{target}" auth_token
+"{target}" oauth_token
+"{target}" private_key
+"{target}" secret_key
+"{target}" SECRET_KEY
+"{target}" DB_PASSWORD
+"{target}" database_password
+"{target}" db_pass
+"{target}" smtp_password
+"{target}" credentials
+"{target}" AWS_SECRET_ACCESS_KEY
+"{target}" AWS_ACCESS_KEY_ID
+"{target}" STRIPE_SECRET
+"{target}" TWILIO_AUTH_TOKEN
+"{target}" SENDGRID_API_KEY
+
+# ─── Configuration files ──────────────────────────────────────────
+"{target}" filename:.env
+"{target}" filename:config.json
+"{target}" filename:database.yml
+"{target}" filename:settings.py
+"{target}" filename:application.properties
+"{target}" filename:wp-config.php
+"{target}" filename:.npmrc
+"{target}" filename:.bash_history
+"{target}" filename:id_rsa
+
+# ─── Internal infrastructure ─────────────────────────────────────
+"{target}" internal
+"{target}" intranet
+"{target}" staging
+"{target}" dev.
+"{target}" localhost
+"{target}" 192.168
+"{target}" 10.0.
+"{target}" vpn
+
+# ─── Authentication & tokens ─────────────────────────────────────
+"{target}" Bearer
+"{target}" JWT
+"{target}" Authorization:
+"{target}" token:
+"{target}" apikey:
+
+# ─── Database connection strings ─────────────────────────────────
+"{target}" connectionString
+"{target}" connection_string
+"{target}" mysql://
+"{target}" postgresql://
+"{target}" mongodb://
+"{target}" redis://
+"{target}" jdbc:
+
+# ─── Cloud provider credentials ──────────────────────────────────
+"{target}" AKIA   (AWS key prefix)
+"{target}" gcp_credentials
+"{target}" google_credentials
+"{target}" azure_client_secret
+"{target}" client_secret
+"{target}" subscription_id
+
+# ─── CI/CD secrets ───────────────────────────────────────────────
+"{target}" filename:.travis.yml
+"{target}" filename:Jenkinsfile
+"{target}" filename:.circleci/config.yml
+"{target}" filename:.github/workflows
+"{target}" deploy_key
+"{target}" deployment_token

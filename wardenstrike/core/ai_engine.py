@@ -84,6 +84,119 @@ Apply the 7-Question Gate:
 - Would a reasonable security team fix this?
 - Is it likely a duplicate?
 - Is the report quality sufficient?""",
+
+    "cloud_auditor": """You are a cloud security architect and penetration tester specializing in AWS, GCP, and Azure.
+Analyze cloud security findings and:
+1. Identify the blast radius of each misconfiguration (what can an attacker do from here?)
+2. Map privilege escalation paths (misconfiguration → lateral movement → cloud admin)
+3. Identify data exfiltration vectors
+4. Chain multiple misconfigurations for maximum impact
+5. Prioritize by exploitability and real-world business impact
+6. Identify compliance violations (SOC2, PCI-DSS, HIPAA, ISO27001)
+7. Provide immediate remediation steps vs long-term hardening
+
+Focus especially on: IAM privilege escalation, SSRF → metadata credential theft,
+S3 bucket policy issues, exposed secrets, public compute instances.""",
+
+    "ad_analyst": """You are an Active Directory security expert and red team operator.
+Analyze AD reconnaissance data to:
+1. Identify the shortest path to Domain Admin
+2. Find Kerberoasting and ASREPRoasting opportunities
+3. Identify password spraying opportunities based on policy
+4. Map lateral movement paths between systems
+5. Identify trust relationships to pivot between domains/forests
+6. Find common AD misconfigurations: unconstrained delegation, ACL abuse, AdminSDHolder
+7. Prioritize attack paths by ease of exploitation
+
+Always think like an attacker: what's the fastest path from low-priv user to Domain Admin?
+Reference: BloodHound attack paths, Harmj0y research, MITRE ATT&CK Enterprise.""",
+
+    "api_auditor": """You are an API security specialist focused on finding business logic and design flaws.
+Analyze APIs to identify:
+1. IDOR vulnerabilities (direct object reference without authorization)
+2. Mass assignment vulnerabilities
+3. Broken function-level authorization
+4. Missing rate limiting → brute force opportunities
+5. Sensitive data exposure in responses
+6. API versioning issues (v1 deprecated but still accessible)
+7. JWT/OAuth token weaknesses
+8. GraphQL-specific issues (introspection, batching, depth attacks)
+9. Race conditions in concurrent requests
+10. Business logic flaws (price manipulation, quantity abuse, workflow bypass)
+
+Be specific about which endpoints, parameters, and HTTP methods are vulnerable.""",
+
+    "web3_auditor": """You are a world-class smart contract security auditor (Trail of Bits / OpenZeppelin level).
+Perform deep analysis of Solidity code to find:
+1. Reentrancy (single-function, cross-function, cross-contract, view reentrancy)
+2. Access control issues (missing modifiers, tx.origin, role bypasses)
+3. Integer overflow/underflow (even with Solidity 0.8+ — consider unchecked blocks)
+4. Oracle manipulation (flash loan attacks on spot prices)
+5. Flash loan attack vectors (price manipulation, governance attacks)
+6. Signature replay (missing chainId, nonce, domain separator)
+7. Proxy upgrade vulnerabilities (storage collision, uninitialized, selfdestruct)
+8. ERC4626 inflation attacks
+9. MEV/front-running opportunities
+10. Gas griefing / DoS vectors
+
+For each finding: exact line number, PoC outline (Foundry test preferred), severity, potential USD impact.""",
+
+    "osint_analyst": """You are an OSINT analyst for corporate intelligence and attack surface discovery.
+Analyze reconnaissance data to:
+1. Identify the most valuable targets in the discovered attack surface
+2. Correlate data points across sources (email → LinkedIn → GitHub → internal docs)
+3. Identify leaked credentials and their potential reuse
+4. Map the organizational structure for social engineering targets
+5. Find exposed infrastructure not intended to be public
+6. Identify shadow IT and forgotten assets
+7. Prioritize targets by exposure level and potential impact
+8. Suggest phishing/vishing lure themes based on discovered information
+
+Present findings as actionable intelligence for a red team engagement.""",
+
+    "pentest_report_writer": """You are a senior penetration tester writing professional audit reports for enterprise clients (Warden Security).
+Write findings in the format:
+- Executive Summary (non-technical, business impact focused)
+- Technical Finding (detailed, reproducible)
+- Risk Rating (Critical/High/Medium/Low/Informational with CVSS 3.1)
+- Business Impact (what does this mean for the organization?)
+- Proof of Concept (step-by-step reproduction)
+- Remediation (specific, actionable, prioritized)
+- References (CVE, CWE, OWASP)
+
+Tone: professional, authoritative, and clear. Use plain language for executive sections.
+Format: suitable for both bug bounty platforms AND enterprise audit reports.""",
+
+    "exploit_chain_builder": """You are an expert red team operator specializing in exploit chain development.
+Given individual vulnerabilities, construct kill chains that:
+1. Start from initial access (external recon, phishing, web vulns)
+2. Progress through privilege escalation
+3. Achieve lateral movement
+4. Reach the ultimate objective (data, domain admin, cloud admin, ransomware deployment)
+
+For each chain:
+- Name it after the technique (e.g., "SSRF-to-IMDS-to-IAM-privesc")
+- Rate feasibility (high/medium/low) based on real-world conditions
+- Estimate time-to-exploit for a skilled attacker
+- Map to MITRE ATT&CK tactics and techniques
+- Calculate combined CVSS if applicable
+
+Think: if I were a nation-state APT, how would I chain these into a full compromise?""",
+
+    "code_reviewer": """You are a security-focused code reviewer with expertise in application security.
+Review code for:
+1. Injection vulnerabilities (SQL, LDAP, XPath, OS command, SSTI)
+2. Authentication/authorization flaws
+3. Insecure direct object references
+4. Sensitive data exposure (hardcoded credentials, PII logging)
+5. Insecure deserialization
+6. Use of vulnerable components/dependencies
+7. Security misconfigurations
+8. Cryptography issues (weak algorithms, hardcoded keys, improper PRNG)
+9. Race conditions and TOCTOU issues
+10. Business logic vulnerabilities
+
+For each finding: line number, vulnerability type, CWE ID, severity, and a specific fix.""",
 }
 
 
@@ -312,3 +425,189 @@ Apply the 7-Question Gate and respond in JSON:
             return json.loads(result)
         except json.JSONDecodeError:
             return {"error": "Failed to parse", "raw": result}
+
+    def analyze_cloud_findings(self, findings: list[dict], provider: str = "AWS") -> dict:
+        """Analyze cloud security findings and build attack chains."""
+        findings_str = json.dumps(findings[:50], indent=2, default=str)[:6000]
+        prompt = f"""Analyze these {provider} security findings from a penetration test:
+
+{findings_str}
+
+Respond in JSON:
+{{
+    "critical_chains": [{{"chain": "...", "steps": [], "impact": "", "feasibility": "high/medium/low"}}],
+    "privilege_escalation_paths": [{{"path": "...", "steps": [], "result": ""}}],
+    "data_exfiltration_vectors": ["..."],
+    "compliance_violations": [{{"standard": "SOC2/PCI/HIPAA", "control": "", "finding": ""}}],
+    "immediate_actions": ["action1"],
+    "long_term_hardening": ["recommendation1"],
+    "overall_risk": "critical/high/medium/low",
+    "executive_summary": "2-3 sentence non-technical summary"
+}}"""
+        result = self._call(SYSTEM_PROMPTS["cloud_auditor"], prompt, json_mode=True)
+        try:
+            return json.loads(result)
+        except json.JSONDecodeError:
+            return {"error": "Parse failed", "raw": result}
+
+    def analyze_ad_findings(self, findings: list[dict], domain: str = "") -> dict:
+        """Analyze Active Directory findings and identify attack paths."""
+        findings_str = json.dumps(findings[:50], indent=2, default=str)[:6000]
+        prompt = f"""Analyze these Active Directory findings for domain: {domain}
+
+{findings_str}
+
+Respond in JSON:
+{{
+    "domain_admin_paths": [{{"path_name": "", "steps": [], "tools": [], "estimated_time": ""}}],
+    "kerberoasting_users": [{{"user": "", "likelihood_weak_password": "high/medium/low"}}],
+    "spray_candidates": [{{"username": "", "common_password": ""}}],
+    "lateral_movement_paths": [{{"from": "", "to": "", "method": ""}}],
+    "immediate_escalation": "best immediate path to DA",
+    "blastradius": "what attacker achieves at DA",
+    "mitre_ttps": ["T1XXX - technique name"],
+    "executive_summary": "non-technical summary"
+}}"""
+        result = self._call(SYSTEM_PROMPTS["ad_analyst"], prompt, json_mode=True)
+        try:
+            return json.loads(result)
+        except json.JSONDecodeError:
+            return {"error": "Parse failed", "raw": result}
+
+    def analyze_api(self, endpoints: list[dict], responses: list[dict] = None) -> dict:
+        """Analyze API endpoints and responses for security issues."""
+        data = {"endpoints": endpoints[:30], "responses": (responses or [])[:10]}
+        prompt = f"""Analyze these API endpoints for security vulnerabilities:
+
+{json.dumps(data, indent=2, default=str)[:5000]}
+
+Respond in JSON:
+{{
+    "idor_candidates": [{{"endpoint": "", "parameter": "", "test": "", "impact": ""}}],
+    "auth_bypass_candidates": [{{"endpoint": "", "method": "", "test": ""}}],
+    "mass_assignment": [{{"endpoint": "", "injectable_fields": []}}],
+    "sensitive_data_exposure": [{{"endpoint": "", "exposed_fields": [], "severity": ""}}],
+    "rate_limit_missing": [{{"endpoint": "", "brute_force_target": ""}}],
+    "business_logic_flaws": [{{"description": "", "endpoint": "", "impact": ""}}],
+    "recommended_tests": ["specific test to run"],
+    "highest_value_targets": ["endpoint or finding most worth investigating"]
+}}"""
+        result = self._call(SYSTEM_PROMPTS["api_auditor"], prompt, json_mode=True)
+        try:
+            return json.loads(result)
+        except json.JSONDecodeError:
+            return {"error": "Parse failed", "raw": result}
+
+    def analyze_osint(self, osint_data: dict, target: str = "") -> dict:
+        """Analyze OSINT collection and build actionable intelligence."""
+        prompt = f"""Analyze this OSINT data collected for target: {target}
+
+{json.dumps(osint_data, indent=2, default=str)[:5000]}
+
+Respond in JSON:
+{{
+    "high_value_targets": [{{"asset": "", "reason": "", "suggested_attacks": []}}],
+    "credential_reuse_candidates": [{{"email": "", "source": "", "suggested_passwords": []}}],
+    "social_engineering_vectors": [{{"target_person": "", "pretext": "", "method": ""}}],
+    "exposed_infrastructure": [{{"asset": "", "type": "", "attack_surface": ""}}],
+    "shadow_it": [{{"asset": "", "owner": "", "risk": ""}}],
+    "phishing_lure_themes": ["theme1"],
+    "key_intelligence": ["finding1"],
+    "attack_plan": "recommended initial access strategy"
+}}"""
+        result = self._call(SYSTEM_PROMPTS["osint_analyst"], prompt, json_mode=True)
+        try:
+            return json.loads(result)
+        except json.JSONDecodeError:
+            return {"error": "Parse failed", "raw": result}
+
+    def generate_pentest_report_section(self, finding: dict, report_type: str = "enterprise") -> str:
+        """Generate a professional pentest report section for enterprise clients."""
+        prompt = f"""Write a professional penetration test finding for Warden Security's audit report.
+Report type: {report_type}
+
+Finding data:
+{json.dumps(finding, indent=2, default=str)[:3000]}
+
+Generate a complete finding section with:
+1. Finding Title
+2. Severity (Critical/High/Medium/Low/Informational)
+3. CVSS 3.1 Score and Vector
+4. CWE Reference
+5. Executive Summary (2-3 sentences, non-technical)
+6. Technical Description
+7. Proof of Concept (step-by-step)
+8. Business Impact
+9. Remediation (specific code/config fix)
+10. References
+
+Format as professional markdown."""
+        return self._call(SYSTEM_PROMPTS["pentest_report_writer"], prompt)
+
+    def review_code(self, code: str, language: str = "auto", filename: str = "") -> dict:
+        """Security-focused code review."""
+        if len(code) > 12000:
+            code = code[:12000] + "\n... [TRUNCATED]"
+
+        prompt = f"""Security code review for: {filename or language}
+
+```{language}
+{code}
+```
+
+Respond in JSON:
+{{
+    "vulnerabilities": [{{
+        "type": "vuln_type",
+        "severity": "critical/high/medium/low",
+        "line": 0,
+        "code_snippet": "...",
+        "cwe": "CWE-XXX",
+        "description": "...",
+        "fix": "specific code fix"
+    }}],
+    "hardcoded_secrets": [{{"line": 0, "type": "", "value_preview": ""}}],
+    "insecure_dependencies": [{{"package": "", "version": "", "vulnerability": ""}}],
+    "security_score": "0-10",
+    "summary": "overall assessment"
+}}"""
+        result = self._call(SYSTEM_PROMPTS["code_reviewer"], prompt, json_mode=True)
+        try:
+            return json.loads(result)
+        except json.JSONDecodeError:
+            return {"error": "Parse failed", "raw": result}
+
+    def build_exploit_chain(self, findings: list[dict], objective: str = "full compromise") -> dict:
+        """Build detailed exploit chains from findings toward an objective."""
+        findings_str = json.dumps([{
+            "id": i, "title": f.get("title"), "severity": f.get("severity"),
+            "vuln_type": f.get("vuln_type"), "url": f.get("url")
+        } for i, f in enumerate(findings[:30])], indent=2)
+
+        prompt = f"""Build exploit chains from these findings targeting: {objective}
+
+Findings:
+{findings_str}
+
+Respond in JSON:
+{{
+    "chains": [{{
+        "name": "Chain name (e.g. XSS-to-ATO-to-IDOR)",
+        "objective_achieved": "what attacker gets",
+        "finding_ids": [0, 1, 2],
+        "steps": ["step1", "step2"],
+        "tools_needed": ["tool1"],
+        "combined_severity": "critical/high/medium",
+        "feasibility": "high/medium/low",
+        "estimated_bounty": "$X",
+        "mitre_chain": ["T1XXX - Initial Access", "T1XXX - Privilege Escalation"],
+        "prerequisites": "what attacker needs to start"
+    }}],
+    "standalone_criticals": ["findings that are critical without chaining"],
+    "chain_diagram": "ASCII art or text diagram of best chain"
+}}"""
+        result = self._call(SYSTEM_PROMPTS["exploit_chain_builder"], prompt, json_mode=True)
+        try:
+            return json.loads(result)
+        except json.JSONDecodeError:
+            return {"error": "Parse failed", "raw": result}
