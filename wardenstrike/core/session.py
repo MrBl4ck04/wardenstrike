@@ -127,7 +127,7 @@ class ReconResult(Base):
     result_type = Column(String(50))  # subdomain, port, url, js_file, endpoint, parameter, technology
     value = Column(Text, nullable=False)
     source = Column(String(50))  # tool that found it
-    metadata = Column(Text)  # JSON blob
+    extra_data = Column("metadata", Text)  # JSON blob
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -305,7 +305,7 @@ class SessionManager:
                     result_type=result_type,
                     value=value,
                     source=source,
-                    metadata=json.dumps(metadata) if metadata else None,
+                    extra_data=json.dumps(metadata) if metadata else None,
                 )
                 session.add(result)
                 session.commit()

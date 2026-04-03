@@ -339,3 +339,86 @@ class WardenStrikeEngine:
             "targets": {"total": len(targets), "alive": sum(1 for t in targets if t.is_alive)},
             "findings": stats,
         }
+
+    # ─── Cloud ────────────────────────────────────────────────────────────────
+
+    async def run_cloud_assessment(self, provider: str = "all") -> dict:
+        """Run cloud security assessment. provider: aws | gcp | azure | all"""
+        from wardenstrike.modules.cloud.cloud_engine import CloudEngine
+        eng = self._require_engagement()
+        cloud = CloudEngine(self.config, self.db, eng.id)
+        if provider == "aws":
+            return await cloud.scan_aws()
+        elif provider == "gcp":
+            return await cloud.scan_gcp()
+        elif provider == "azure":
+            return await cloud.scan_azure()
+        else:
+            return await cloud.scan_all()
+
+    # ─── OSINT ────────────────────────────────────────────────────────────────
+
+    async def run_osint(self, target: str, deep: bool = False) -> dict:
+        """Run OSINT collection on a target domain/org."""
+        from wardenstrike.modules.osint.osint_engine import OSINTEngine
+        eng = self._require_engagement()
+        osint = OSINTEngine(self.config, self.db, eng.id)
+        return await osint.run(target, deep=deep)
+
+    # ─── Active Directory ─────────────────────────────────────────────────────
+
+    async def run_ad_assessment(self, target: str, domain: str, username: str = "",
+                                password: str = "", dc_ip: str = "") -> dict:
+        """Run Active Directory security assessment."""
+        from wardenstrike.modules.internal.ad_engine import ADEngine
+        eng = self._require_engagement()
+        ad = ADEngine(self.config, self.db, eng.id)
+        return await ad.run(target=target, domain=domain, username=username,
+                            password=password, dc_ip=dc_ip)
+
+    # ─── Monitor ──────────────────────────────────────────────────────────────
+
+    async def run_monitor(self, targets: list[str]) -> dict:
+        """Run continuous monitoring cycle on a list of targets."""
+        from wardenstrike.modules.monitor.continuous import ContinuousMonitor
+        eng = self._require_engagement()
+        monitor = ContinuousMonitor(self.config, self.db, eng.id)
+        return await monitor.run(targets)
+
+    # ─── GraphQL ──────────────────────────────────────────────────────────────
+
+    async def run_graphql_assessment(self, url: str, token: str = "") -> dict:
+        """Run GraphQL security assessment on a target URL."""
+        from wardenstrike.modules.scanner.graphql import GraphQLScanner
+        eng = self._require_engagement()
+        scanner = GraphQLScanner(self.config, self.db, eng.id)
+        return await scanner.run(url, token=token)
+
+    # ─── JWT ──────────────────────────────────────────────────────────────────
+
+    async def run_jwt_attacks(self, token: str, target_url: str = "",
+                              public_key: str = "") -> dict:
+        """Run JWT attack suite on a token."""
+        from wardenstrike.modules.scanner.jwt_attacks import JWTAttacker
+        eng = self._require_engagement()
+        attacker = JWTAttacker(self.config, self.db, eng.id)
+        return await attacker.run(token, target_url=target_url, public_key=public_key)
+
+    # ─── OAuth ────────────────────────────────────────────────────────────────
+
+    async def run_oauth_assessment(self, target_url: str, client_id: str = "",
+                                   redirect_uri: str = "") -> dict:
+        """Run OAuth 2.0 / OIDC security assessment."""
+        from wardenstrike.modules.scanner.oauth_tester import OAuthTester
+        eng = self._require_engagement()
+        tester = OAuthTester(self.config, self.db, eng.id)
+        return await tester.run(target_url, client_id=client_id, redirect_uri=redirect_uri)
+
+    # ─── Web3 ─────────────────────────────────────────────────────────────────
+
+    async def run_web3_audit(self, target: str, contract_address: str = "") -> dict:
+        """Run Web3 / smart contract security audit."""
+        from wardenstrike.modules.web3.contract_analyzer import ContractAnalyzer
+        eng = self._require_engagement()
+        analyzer = ContractAnalyzer(self.config, self.db, eng.id)
+        return await analyzer.run(target, contract_address=contract_address)
