@@ -147,3 +147,86 @@ notifications:
   discord_webhook: ""
   telegram_bot_token: ""
   telegram_chat_id: ""
+
+# ─── OSINT Configuration ──────────────────────────────────────────────────────
+osint:
+  shodan_api_key: ""        # Override with SHODAN_API_KEY env var
+  censys_api_id: ""
+  censys_api_secret: ""
+  github_token: ""          # Override with GITHUB_TOKEN env var
+  hibp_api_key: ""          # Have I Been Pwned API key
+  virustotal_api_key: ""
+  fullhunt_api_key: ""
+  hunter_api_key: ""
+
+# ─── Active Directory Configuration ──────────────────────────────────────────
+active_directory:
+  default_domain: ""
+  default_dc_ip: ""
+  bloodhound_output_dir: "/tmp/wardenstrike_bloodhound"
+  impacket_timeout: 60
+  max_spray_attempts: 2     # Stay safe: never exceed lockout threshold - 1
+
+# ─── Cloud Configuration ─────────────────────────────────────────────────────
+cloud:
+  aws:
+    default_profile: "default"
+    default_region: "us-east-1"
+    check_all_regions: false  # Set true for full multi-region audit
+  gcp:
+    default_project: ""
+  azure:
+    default_subscription: ""
+
+# ─── Metasploit MSFRPC ───────────────────────────────────────────────────────
+metasploit:
+  host: "127.0.0.1"
+  port: 55553
+  password: "msfrpc_password"    # Change this! Start: msfrpcd -P <password> -S -a 127.0.0.1
+  ssl: true
+  auto_correlate: false          # Auto-correlate findings with MSF modules after scan
+
+# ─── Nessus / Tenable ────────────────────────────────────────────────────────
+nessus:
+  url: "https://localhost:8834"
+  access_key: ""               # Preferred auth (API keys)
+  secret_key: ""
+  username: ""                 # Alternative: username/password auth
+  password: ""
+  auto_import: false           # Auto-import completed scans
+
+# ─── Continuous Monitor ───────────────────────────────────────────────────────
+monitor:
+  db_path: "~/.wardenstrike/monitor.db"
+  check_interval_hours: 4       # How often to run (for cron guidance)
+  alert_new_subdomains: true
+  alert_new_ports: true
+  alert_content_changes: true
+  alert_cert_changes: true
+  alert_tech_changes: false
+  risky_ports: [22, 23, 25, 3306, 3389, 5432, 6379, 9200, 27017, 445, 2375]
+
+# ─── Web3 Configuration ──────────────────────────────────────────────────────
+web3:
+  rpc_url: ""                  # Ethereum RPC (e.g. Infura/Alchemy)
+  etherscan_api_key: ""
+  foundry_profile: "default"
+  slither_args: "--print human-summary"
+  mythril_timeout: 300
+
+# ─── GraphQL Configuration ────────────────────────────────────────────────────
+graphql:
+  introspection_check: true
+  batch_check: true
+  depth_limit_check: true
+  auth_bypass_check: true
+  injection_check: true
+  max_depth_test: 8
+
+# ─── JWT Configuration ────────────────────────────────────────────────────────
+jwt:
+  brute_force_enabled: true
+  brute_force_wordlist: ""     # Path to custom wordlist (uses built-in if empty)
+  test_alg_none: true
+  test_rsa_confusion: true
+  test_kid_injection: true

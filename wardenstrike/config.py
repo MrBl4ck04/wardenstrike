@@ -48,13 +48,18 @@ class Config:
     def _apply_env_overrides(self):
         """Map environment variables to config keys."""
         env_map = {
+            # AI
             "WARDENSTRIKE_ANTHROPIC_KEY": ("ai", "api_key"),
             "ANTHROPIC_API_KEY": ("ai", "api_key"),
+            # Burp Suite
             "WARDENSTRIKE_BURP_URL": ("burpsuite", "api_url"),
             "WARDENSTRIKE_BURP_KEY": ("burpsuite", "api_key"),
+            # ZAP
             "WARDENSTRIKE_ZAP_URL": ("zap", "api_url"),
             "WARDENSTRIKE_ZAP_KEY": ("zap", "api_key"),
+            # Proxy
             "WARDENSTRIKE_PROXY": ("general", "proxy"),
+            # API keys (legacy section)
             "SHODAN_API_KEY": ("api_keys", "shodan"),
             "VT_API_KEY": ("api_keys", "virustotal"),
             "CENSYS_API_ID": ("api_keys", "censys_id"),
@@ -62,6 +67,32 @@ class Config:
             "GITHUB_TOKEN": ("api_keys", "github"),
             "SECURITYTRAILS_KEY": ("api_keys", "securitytrails"),
             "CHAOS_KEY": ("api_keys", "chaos"),
+            # OSINT module keys (also mapped to osint section)
+            "SHODAN_API_KEY": ("osint", "shodan_api_key"),
+            "GITHUB_TOKEN": ("osint", "github_token"),
+            "CENSYS_API_ID": ("osint", "censys_api_id"),
+            "CENSYS_API_SECRET": ("osint", "censys_api_secret"),
+            "HIBP_API_KEY": ("osint", "hibp_api_key"),
+            "HUNTER_API_KEY": ("osint", "hunter_api_key"),
+            "FULLHUNT_API_KEY": ("osint", "fullhunt_api_key"),
+            # Metasploit
+            "MSF_RPC_PASSWORD": ("metasploit", "password"),
+            "MSF_RPC_HOST": ("metasploit", "host"),
+            "MSF_RPC_PORT": ("metasploit", "port"),
+            # Nessus
+            "NESSUS_URL": ("nessus", "url"),
+            "NESSUS_ACCESS_KEY": ("nessus", "access_key"),
+            "NESSUS_SECRET_KEY": ("nessus", "secret_key"),
+            "NESSUS_USERNAME": ("nessus", "username"),
+            "NESSUS_PASSWORD": ("nessus", "password"),
+            # Cloud
+            "AWS_DEFAULT_PROFILE": ("cloud", "aws", "default_profile"),
+            "AWS_DEFAULT_REGION": ("cloud", "aws", "default_region"),
+            "GCP_PROJECT": ("cloud", "gcp", "default_project"),
+            "AZURE_SUBSCRIPTION": ("cloud", "azure", "default_subscription"),
+            # Web3
+            "ETH_RPC_URL": ("web3", "rpc_url"),
+            "ETHERSCAN_API_KEY": ("web3", "etherscan_api_key"),
         }
 
         for env_var, key_path in env_map.items():

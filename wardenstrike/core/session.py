@@ -228,14 +228,33 @@ class SessionManager:
 
     # --- Finding helpers ---
 
-    def add_finding(self, engagement_id: int, finding_hash: str, **kwargs) -> Finding | None:
-        """Add finding if not duplicate. Returns None if duplicate found."""
+    def add_finding(self, engagement_id: int, finding_hash: str = None, **kwargs) -> Finding | None:
+        """Add finding if not duplicate. Returns None if duplicate found.
+        finding_hash is auto-generated from title+url+type if not provided.
+        Unknown kwargs (e.g. raw_data) are silently dropped.
+        """
+        import hashlib
+
+        # Auto-generate hash if not provided
+        if not finding_hash:
+            h_input = (
+                str(kwargs.get("title", ""))
+                + str(kwargs.get("url", ""))
+                + str(kwargs.get("vuln_type", ""))
+                + str(kwargs.get("severity", ""))
+            ).encode()
+            finding_hash = hashlib.md5(h_input).hexdigest()[:16]
+
+        # Strip kwargs that are not Finding columns
+        valid_cols = {c.key for c in Finding.__table__.columns}
+        clean_kwargs = {k: v for k, v in kwargs.items() if k in valid_cols}
+
         with self.get_session() as session:
             existing = session.query(Finding).filter_by(finding_hash=finding_hash).first()
             if existing:
                 return None  # Duplicate
 
-            finding = Finding(engagement_id=engagement_id, finding_hash=finding_hash, **kwargs)
+            finding = Finding(engagement_id=engagement_id, finding_hash=finding_hash, **clean_kwargs)
             session.add(finding)
             session.commit()
             session.refresh(finding)
@@ -325,3 +344,6 @@ class SessionManager:
                 if error:
                     log.error = error
                 session.commit()
+
+# Alias for backwards compatibility with new modules
+DatabaseManager = SessionManager
