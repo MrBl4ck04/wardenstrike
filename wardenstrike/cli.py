@@ -1355,5 +1355,154 @@ def ai_cloud_analyze(ctx, provider):
         console.print(f"\n[bold red]Critical Chain:[/bold red] {chain.get('chain','?')}")
 
 
+# ── Autopilot ─────────────────────────────────────────────────────────────────
+
+@main.command("autopilot")
+@click.argument("target")
+@click.option("--mode", "-m",
+              default="full",
+              type=click.Choice(["full", "recon_only", "web", "cloud", "internal"]),
+              help="Assessment scope/mode")
+@click.option("--max-iter", "-n", default=25, show_default=True,
+              help="Maximum autopilot iterations (hard stop)")
+@click.option("--local-llm", is_flag=True, default=False,
+              help="Enable local LLM (BaronLLM via Ollama) for offensive technique generation")
+@click.option("--local-model", default="baron-llm",
+              help="Ollama model name for local LLM")
+@click.option("--local-url", default="http://localhost:11434/v1",
+              help="Ollama OpenAI-compatible base URL")
+@click.pass_context
+def autopilot(ctx, target, mode, max_iter, local_llm, local_model, local_url):
+    """Autonomous pentesting agent — plans, executes, and learns by itself.
+
+    \b
+    The autopilot loop:
+      1. Claude Planner decides the next best action
+      2. Executes the action (recon / scan / cloud / AD / etc.)
+      3. Saves findings to DB and episodic memory
+      4. AI Adviser detects loops or failures and pivots strategy
+      5. Repeats until done or --max-iter reached
+
+    \b
+    Examples:
+      wardenstrike autopilot example.com
+      wardenstrike autopilot example.com --mode web --max-iter 15
+      wardenstrike autopilot example.com --local-llm --local-model baron-llm
+    """
+    engine = get_engine(ctx)
+    eng = engine._require_engagement()
+
+    # Override local LLM settings if flags provided
+    if local_llm:
+        engine.config._config.setdefault("ai", {})
+        engine.config._config["ai"]["local_enabled"] = True
+        engine.config._config["ai"]["local_model"] = local_model
+        engine.config._config["ai"]["local_base_url"] = local_url
+        console.print(f"[cyan]Local LLM enabled:[/cyan] {local_model} @ {local_url}")
+
+    from wardenstrike.core.autopilot import AutopilotAgent
+    agent = AutopilotAgent(
+        config=engine.config,
+        engagement_id=eng.id,
+        max_iterations=max_iter,
+        scope=eng.scope if hasattr(eng, "scope") else [],
+        mode=mode,
+    )
+    run_async(agent.run(target))
+
+
+# ── Memory ────────────────────────────────────────────────────────────────────
+
+@main.group("memory")
+def memory_group():
+    """Episodic memory — what WardenStrike has learned across engagements."""
+    pass
+
+
+@memory_group.command("stats")
+@click.pass_context
+def memory_stats(ctx):
+    """Show memory statistics."""
+    engine = get_engine(ctx)
+    from wardenstrike.core.memory import EpisodicMemory
+    mem = EpisodicMemory(engine.config.get("session", "memory_db", default="./data/memory.db"))
+    summary = mem.summary()
+
+    table = Table(title="Episodic Memory Stats")
+    table.add_column("Metric", style="bold")
+    table.add_column("Value", style="cyan")
+    table.add_row("Total episodes", str(summary["total"]))
+    for outcome, cnt in summary.get("by_outcome", {}).items():
+        table.add_row(f"  {outcome}", str(cnt))
+    console.print(table)
+
+    if summary.get("top_actions"):
+        table2 = Table(title="Top Actions in Memory")
+        table2.add_column("Action")
+        table2.add_column("Count", justify="right")
+        for row in summary["top_actions"]:
+            table2.add_row(row["action"], str(row["cnt"]))
+        console.print(table2)
+
+
+@memory_group.command("recall")
+@click.argument("target_hint")
+@click.option("--action", "-a", default=None, help="Filter by action type")
+@click.pass_context
+def memory_recall(ctx, target_hint, action):
+    """Recall past episodes matching a target fingerprint (e.g. 'node,graphql')."""
+    engine = get_engine(ctx)
+    from wardenstrike.core.memory import EpisodicMemory
+    mem = EpisodicMemory(engine.config.get("session", "memory_db", default="./data/memory.db"))
+    episodes = mem.recall(target_hint, action=action, limit=20)
+
+    if not episodes:
+        console.print("[yellow]No matching episodes found.[/yellow]")
+        return
+
+    table = Table(title=f"Episodes matching '{target_hint}'")
+    table.add_column("Action")
+    table.add_column("Outcome")
+    table.add_column("Finding")
+    table.add_column("Notes")
+    table.add_column("Date")
+    for ep in episodes:
+        color = {"success": "green", "partial": "yellow", "failure": "red"}.get(ep["outcome"], "white")
+        table.add_row(
+            ep["action"],
+            f"[{color}]{ep['outcome']}[/{color}]",
+            ep.get("finding", "") or "",
+            (ep.get("notes") or "")[:60],
+            (ep.get("created_at") or "")[:10],
+        )
+    console.print(table)
+
+
+@memory_group.command("suggest")
+@click.argument("target_hint")
+@click.pass_context
+def memory_suggest(ctx, target_hint):
+    """Suggest best actions based on historical success rates."""
+    engine = get_engine(ctx)
+    from wardenstrike.core.memory import EpisodicMemory
+    mem = EpisodicMemory(engine.config.get("session", "memory_db", default="./data/memory.db"))
+    actions = ["recon", "scan", "graphql", "jwt", "oauth", "cloud", "osint", "ad", "web3"]
+    suggestions = mem.suggest_actions(target_hint, actions)
+
+    table = Table(title=f"Action suggestions for '{target_hint}'")
+    table.add_column("Action")
+    table.add_column("Success Rate", justify="right")
+    table.add_column("Past Runs", justify="right")
+    for s in suggestions:
+        rate = s["success_rate"]
+        color = "green" if rate >= 0.6 else ("yellow" if rate >= 0.4 else "red")
+        table.add_row(
+            s["action"],
+            f"[{color}]{rate:.0%}[/{color}]",
+            str(len(s["past_episodes"])),
+        )
+    console.print(table)
+
+
 if __name__ == "__main__":
     main()

@@ -48,9 +48,14 @@ class Config:
     def _apply_env_overrides(self):
         """Map environment variables to config keys."""
         env_map = {
-            # AI
+            # AI (Claude)
             "WARDENSTRIKE_ANTHROPIC_KEY": ("ai", "api_key"),
             "ANTHROPIC_API_KEY": ("ai", "api_key"),
+            # Local LLM (Ollama / BaronLLM)
+            "LOCAL_LLM_ENABLED": ("ai", "local_enabled"),
+            "LOCAL_LLM_MODEL": ("ai", "local_model"),
+            "LOCAL_LLM_BASE_URL": ("ai", "local_base_url"),
+            "OLLAMA_BASE_URL": ("ai", "local_base_url"),
             # Burp Suite
             "WARDENSTRIKE_BURP_URL": ("burpsuite", "api_url"),
             "WARDENSTRIKE_BURP_KEY": ("burpsuite", "api_key"),

@@ -18,6 +18,11 @@ ai:
   report_model: "claude-opus-4-20250514"
   max_tokens: 8192
   temperature: 0.3
+  # Local LLM via Ollama (OpenAI-compatible endpoint)
+  # Run: ollama run hf.co/AlicanKiraz0/Cybersecurity-BaronLLM_Offensive_Security_LLM_Q6_K_GGUF
+  local_enabled: false
+  local_model: "baron-llm"
+  local_base_url: "http://localhost:11434/v1"
 
 # Burp Suite REST API
 burpsuite:

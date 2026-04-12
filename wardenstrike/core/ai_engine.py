@@ -1,6 +1,11 @@
 """
 WardenStrike - AI Engine
-Claude-powered analysis for vulnerability assessment, exploit chaining, and report generation.
+Multi-LLM analysis engine: Claude (cloud) + local models via Ollama (OpenAI-compatible API).
+
+LLM routing strategy:
+  - Claude (Anthropic API): planning, analysis, report writing, exploit chaining
+  - Local / Ollama models (e.g. BaronLLM): offensive technique generation,
+    payload crafting, CVE/ATT&CK lookup — runs entirely offline
 """
 
 import json
@@ -12,6 +17,9 @@ from wardenstrike.config import Config
 from wardenstrike.utils.logger import get_logger
 
 log = get_logger("ai_engine")
+
+# Tasks routed to the local/offensive LLM by default when one is configured
+_LOCAL_LLM_TASKS = {"offensive_techniques", "payload_craft", "cve_lookup", "attck_mapping"}
 
 
 SYSTEM_PROMPTS = {
@@ -197,27 +205,130 @@ Review code for:
 10. Business logic vulnerabilities
 
 For each finding: line number, vulnerability type, CWE ID, severity, and a specific fix.""",
+
+    "autopilot_planner": """You are an autonomous penetration testing agent (WardenStrike Autopilot).
+Your job is to plan and execute a full security assessment against an authorized target.
+
+Given the current state of an engagement (what has been discovered, what has been tested,
+what findings exist), you must decide the NEXT BEST ACTION to take.
+
+You think like a senior red team operator:
+- Start broad (recon) then go deep (targeted exploitation)
+- Follow the highest-value leads first
+- Avoid redundant work — check memory of past actions
+- Chain vulnerabilities when possible
+- Know when to stop (full coverage achieved or time limit reached)
+
+Always respond in JSON with this exact schema:
+{
+  "reasoning": "why you chose this action",
+  "action": "recon|scan|graphql|jwt|oauth|cloud|osint|ad|web3|analyze|report|done",
+  "action_params": { "key": "value" },
+  "confidence": "high|medium|low",
+  "next_hint": "what to investigate after this action",
+  "stop": false
+}
+
+Use "stop": true only when you have achieved sufficient coverage or all leads are exhausted.""",
+
+    "adviser": """You are the Adviser agent for WardenStrike Autopilot.
+Monitor the autopilot execution log and detect problems:
+1. Infinite loops (same action repeated 3+ times with no new findings)
+2. Tool failures being retried without strategy change
+3. Scope creep (actions on out-of-scope targets)
+4. Wasted effort (scanning already-confirmed-closed ports again)
+
+Respond in JSON:
+{
+  "issue_detected": true/false,
+  "issue_type": "loop|failure_loop|scope_creep|redundant|none",
+  "description": "what is happening",
+  "recommendation": "what the planner should do instead"
+}""",
+
+    "offensive_techniques": """You are BaronLLM, an offensive security specialist.
+Given a vulnerability type and target context, provide:
+1. The most effective attack techniques (ranked by success rate)
+2. Specific payloads adapted to the target technology stack
+3. Common WAF/filter bypass techniques for this vuln class
+4. MITRE ATT&CK technique IDs
+5. Related CVEs if applicable
+
+Be specific, technical, and actionable. Respond in JSON.""",
 }
 
 
 class AIEngine:
-    """Interface to Claude API for security analysis tasks."""
+    """Multi-LLM engine: Claude (Anthropic API) + local models via Ollama."""
 
     def __init__(self, config: Config):
         self.config = config
-        api_key = config.get("ai", "api_key")
-        if not api_key:
-            api_key = None  # Will use ANTHROPIC_API_KEY env var
+
+        # ── Claude (Anthropic) ──────────────────────────────────────────────
+        api_key = config.get("ai", "api_key") or None  # falls back to env ANTHROPIC_API_KEY
         self.client = anthropic.Anthropic(api_key=api_key)
         self.default_model = config.get("ai", "model", default="claude-sonnet-4-20250514")
         self.report_model = config.get("ai", "report_model", default="claude-opus-4-20250514")
         self.max_tokens = config.get("ai", "max_tokens", default=8192)
 
-    def _call(self, system: str, prompt: str, model: str | None = None, max_tokens: int | None = None, json_mode: bool = False) -> str:
-        """Make a call to Claude API."""
+        # ── Local LLM via Ollama (OpenAI-compatible endpoint) ──────────────
+        # Supports any GGUF model served by Ollama, e.g. BaronLLM:
+        #   ollama run hf.co/AlicanKiraz0/Cybersecurity-BaronLLM_Offensive_Security_LLM_Q6_K_GGUF
+        # Config keys: ai.local_model, ai.local_base_url, ai.local_enabled
+        self.local_enabled: bool = bool(config.get("ai", "local_enabled", default=False))
+        self.local_model: str = config.get("ai", "local_model", default="baron-llm")
+        self.local_base_url: str = config.get("ai", "local_base_url", default="http://localhost:11434/v1")
+        self._local_client = None  # lazy-loaded
+
+    def _get_local_client(self):
+        """Lazy-load the OpenAI-compatible client for Ollama."""
+        if self._local_client is None:
+            try:
+                from openai import OpenAI as _OpenAI
+                self._local_client = _OpenAI(
+                    api_key="ollama",  # Ollama ignores the key
+                    base_url=self.local_base_url,
+                )
+            except ImportError:
+                log.warning("openai package not installed — local LLM disabled. Run: pip install openai")
+                self.local_enabled = False
+        return self._local_client
+
+    def _call_local(self, system: str, prompt: str, json_mode: bool = False) -> str:
+        """Call local Ollama model (OpenAI-compatible API)."""
+        client = self._get_local_client()
+        if client is None:
+            return json.dumps({"error": "local LLM unavailable"}) if json_mode else "Error: local LLM unavailable"
+
+        if json_mode:
+            system += "\n\nIMPORTANT: Respond ONLY with valid JSON. No markdown, no code blocks."
+
+        try:
+            resp = client.chat.completions.create(
+                model=self.local_model,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.2,
+            )
+            return resp.choices[0].message.content or ""
+        except Exception as e:
+            log.error(f"Local LLM error: {e}")
+            return json.dumps({"error": str(e)}) if json_mode else f"Error: {e}"
+
+    def _call(self, system: str, prompt: str, model: str | None = None,
+              max_tokens: int | None = None, json_mode: bool = False,
+              task: str | None = None) -> str:
+        """Route call to Claude or local LLM depending on task and config."""
+        # Route offensive-technique tasks to local model when available
+        if task and task in _LOCAL_LLM_TASKS and self.local_enabled:
+            log.debug(f"Routing task '{task}' to local LLM ({self.local_model})")
+            return self._call_local(system, prompt, json_mode=json_mode)
+
+        # Default: Claude
         model = model or self.default_model
         max_tokens = max_tokens or self.max_tokens
-
         messages = [{"role": "user", "content": prompt}]
 
         if json_mode:
@@ -232,8 +343,55 @@ class AIEngine:
             )
             return response.content[0].text
         except anthropic.APIError as e:
-            log.error(f"AI API error: {e}")
+            log.error(f"Claude API error: {e}")
+            # Fallback to local LLM if Claude fails and local is available
+            if self.local_enabled:
+                log.warning("Claude unavailable — falling back to local LLM")
+                return self._call_local(system, prompt, json_mode=json_mode)
             return json.dumps({"error": str(e)}) if json_mode else f"Error: {e}"
+
+    # ── Planning / Autopilot calls (always Claude for quality) ─────────────
+
+    def plan_next_action(self, engagement_state: dict) -> dict:
+        """Ask Claude to decide the next autopilot action given engagement state."""
+        prompt = f"""Current engagement state:
+{json.dumps(engagement_state, indent=2)}
+
+Based on this state, what is the NEXT BEST penetration testing action to take?
+Remember: avoid repeating actions already completed. Follow highest-value leads."""
+        result = self._call(SYSTEM_PROMPTS["autopilot_planner"], prompt,
+                            model=self.default_model, json_mode=True)
+        try:
+            return json.loads(result)
+        except json.JSONDecodeError:
+            return {"action": "analyze", "reasoning": "parse error", "stop": False, "action_params": {}}
+
+    def advise(self, action_log: list[dict]) -> dict:
+        """Adviser: detect loops, failures, scope creep in the autopilot log."""
+        prompt = f"""Autopilot execution log (last {len(action_log)} actions):
+{json.dumps(action_log, indent=2)}
+
+Analyze this log for problems: loops, repeated failures, redundant actions."""
+        result = self._call(SYSTEM_PROMPTS["adviser"], prompt, json_mode=True)
+        try:
+            return json.loads(result)
+        except json.JSONDecodeError:
+            return {"issue_detected": False, "issue_type": "none", "description": "", "recommendation": ""}
+
+    def get_offensive_techniques(self, vuln_type: str, tech_stack: list[str],
+                                  context: str = "") -> dict:
+        """Get offensive techniques for a vuln type — routed to local LLM when available."""
+        prompt = f"""Vulnerability type: {vuln_type}
+Technology stack: {', '.join(tech_stack)}
+Context: {context}
+
+Provide attack techniques, payloads, and bypass methods."""
+        result = self._call(SYSTEM_PROMPTS["offensive_techniques"], prompt,
+                            json_mode=True, task="offensive_techniques")
+        try:
+            return json.loads(result)
+        except json.JSONDecodeError:
+            return {"error": "parse error", "raw": result}
 
     def analyze_vulnerability(self, finding: dict) -> dict:
         """Analyze a potential vulnerability finding."""
