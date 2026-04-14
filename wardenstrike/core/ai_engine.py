@@ -259,26 +259,43 @@ Be specific, technical, and actionable. Respond in JSON.""",
 
 
 class AIEngine:
-    """Multi-LLM engine: Claude (Anthropic API) + local models via Ollama."""
+    """Multi-LLM engine: Claude (Anthropic API) + local models via Ollama.
+
+    Operates in three modes depending on what's configured:
+      1. Claude only          — ANTHROPIC_API_KEY set, local_enabled=false
+      2. Local only           — no API key, local_enabled=true  (100% offline)
+      3. Hybrid (recommended) — both configured; local handles offensive tasks,
+                                Claude handles planning/analysis/reports
+    """
 
     def __init__(self, config: Config):
         self.config = config
 
-        # ── Claude (Anthropic) ──────────────────────────────────────────────
-        api_key = config.get("ai", "api_key") or None  # falls back to env ANTHROPIC_API_KEY
-        self.client = anthropic.Anthropic(api_key=api_key)
-        self.default_model = config.get("ai", "model", default="claude-sonnet-4-20250514")
-        self.report_model = config.get("ai", "report_model", default="claude-opus-4-20250514")
-        self.max_tokens = config.get("ai", "max_tokens", default=8192)
-
         # ── Local LLM via Ollama (OpenAI-compatible endpoint) ──────────────
-        # Supports any GGUF model served by Ollama, e.g. BaronLLM:
-        #   ollama run hf.co/AlicanKiraz0/Cybersecurity-BaronLLM_Offensive_Security_LLM_Q6_K_GGUF
-        # Config keys: ai.local_model, ai.local_base_url, ai.local_enabled
         self.local_enabled: bool = bool(config.get("ai", "local_enabled", default=False))
         self.local_model: str = config.get("ai", "local_model", default="baron-llm")
         self.local_base_url: str = config.get("ai", "local_base_url", default="http://localhost:11434/v1")
         self._local_client = None  # lazy-loaded
+
+        # ── Claude (Anthropic) — optional when local LLM is present ────────
+        import os
+        api_key = config.get("ai", "api_key") or os.environ.get("ANTHROPIC_API_KEY")
+        self._claude_available: bool = bool(api_key)
+        self.default_model = config.get("ai", "model", default="claude-sonnet-4-20250514")
+        self.report_model = config.get("ai", "report_model", default="claude-opus-4-20250514")
+        self.max_tokens = config.get("ai", "max_tokens", default=8192)
+
+        if self._claude_available:
+            self.client = anthropic.Anthropic(api_key=api_key)
+        else:
+            self.client = None
+            if not self.local_enabled:
+                log.warning(
+                    "No ANTHROPIC_API_KEY and local LLM disabled. "
+                    "Set ANTHROPIC_API_KEY or enable LOCAL_LLM_ENABLED=true in .env"
+                )
+            else:
+                log.info(f"Claude not configured — running in local-only mode ({self.local_model})")
 
     def _get_local_client(self):
         """Lazy-load the OpenAI-compatible client for Ollama."""
@@ -320,8 +337,22 @@ class AIEngine:
     def _call(self, system: str, prompt: str, model: str | None = None,
               max_tokens: int | None = None, json_mode: bool = False,
               task: str | None = None) -> str:
-        """Route call to Claude or local LLM depending on task and config."""
-        # Route offensive-technique tasks to local model when available
+        """Route call to Claude or local LLM depending on task and config.
+
+        Priority:
+          1. If Claude not configured → always use local LLM
+          2. If task is in _LOCAL_LLM_TASKS and local is enabled → local LLM
+          3. Otherwise → Claude, with local fallback on failure
+        """
+        # No Claude configured at all → go local
+        if not self._claude_available:
+            if self.local_enabled:
+                return self._call_local(system, prompt, json_mode=json_mode)
+            err = "No LLM configured. Set ANTHROPIC_API_KEY or LOCAL_LLM_ENABLED=true"
+            log.error(err)
+            return json.dumps({"error": err}) if json_mode else f"Error: {err}"
+
+        # Offensive-technique tasks → prefer local when available
         if task and task in _LOCAL_LLM_TASKS and self.local_enabled:
             log.debug(f"Routing task '{task}' to local LLM ({self.local_model})")
             return self._call_local(system, prompt, json_mode=json_mode)
@@ -344,7 +375,6 @@ class AIEngine:
             return response.content[0].text
         except anthropic.APIError as e:
             log.error(f"Claude API error: {e}")
-            # Fallback to local LLM if Claude fails and local is available
             if self.local_enabled:
                 log.warning("Claude unavailable — falling back to local LLM")
                 return self._call_local(system, prompt, json_mode=json_mode)
