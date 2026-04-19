@@ -18,18 +18,15 @@ import asyncio
 import json
 import time
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 from rich import box
 
 from wardenstrike.config import Config
-from wardenstrike.core.ai_engine import AIEngine
 from wardenstrike.core.memory import EpisodicMemory
-from wardenstrike.core.session import SessionManager, Engagement
 from wardenstrike.utils.logger import get_logger
 
 log = get_logger("autopilot")
@@ -59,8 +56,14 @@ class AutopilotAgent:
         self.scope = scope or []
         self.mode = mode  # full | recon_only | web | cloud | internal
 
-        self.ai = AIEngine(config)
-        self.db = SessionManager(config.get("session", "database", default="./data/wardenstrike.db"))
+        # Use WardenStrikeEngine as the single source of truth for all actions
+        # (avoids duplicating module instantiation logic and signature mismatches)
+        from wardenstrike.core.engine import WardenStrikeEngine
+        self.engine = WardenStrikeEngine(config)
+        self.engine.load_engagement(engagement_id)
+
+        self.ai = self.engine.ai
+        self.db = self.engine.db
         self.memory = EpisodicMemory(config.get("session", "memory_db", default="./data/memory.db"))
 
         # Working memory for current run
@@ -74,8 +77,6 @@ class AutopilotAgent:
         """Assemble current engagement state for the planner."""
         findings = self.db.get_findings(self.engagement_id)
         recon = self.db.get_recon_results(self.engagement_id)
-        targets = self.db.get_targets(self.engagement_id)
-
         # Deduplicate recon by type
         recon_by_type: dict[str, list] = {}
         for r in recon:
@@ -115,6 +116,7 @@ class AutopilotAgent:
             "endpoints": recon_by_type.get("endpoint", [])[:20],
             "findings_summary": finding_summary,
             "finding_count": len(findings),
+            "known_targets": [t.domain for t in self.db.get_targets(self.engagement_id)],
             "completed_actions": completed_actions,
             "last_actions": [a["action"] for a in self._action_log[-5:]],
             "memory_suggestions": [
@@ -170,67 +172,48 @@ class AutopilotAgent:
             return {"status": "error", "error": str(e)}
 
     async def _do_recon(self, target: str, params: dict) -> dict:
-        from wardenstrike.modules.recon.recon_engine import ReconEngine
-        engine = ReconEngine(self.config, self.db, self.engagement_id)
         quick = params.get("quick", self._iteration > 1)
-        results = await engine.run(target, quick=quick)
-        return {"status": "success", "subdomains": len(results.get("subdomains", [])),
+        results = await self.engine.run_recon(target, quick=quick)
+        return {"status": "success",
+                "subdomains": len(results.get("subdomains", [])),
                 "urls": len(results.get("urls", []))}
 
     async def _do_scan(self, target: str, params: dict) -> dict:
-        from wardenstrike.modules.scanner.vuln_scanner import VulnScanner
-        targets_list = params.get("targets") or [target]
-        scanner = VulnScanner(self.config, self.db, self.engagement_id)
-        results = await scanner.run(targets_list, vuln_types=params.get("vuln_types"))
+        targets_list = params.get("targets") or None  # None → engine reads from DB
+        results = await self.engine.run_scan(targets=targets_list,
+                                             vuln_types=params.get("vuln_types"))
         return {"status": "success", "findings": results.get("total_findings", 0)}
 
     async def _do_graphql(self, target: str, params: dict) -> dict:
-        from wardenstrike.modules.scanner.graphql import GraphQLScanner
         url = params.get("url", target)
-        scanner = GraphQLScanner(self.config, self.db, self.engagement_id)
-        results = await scanner.run(url, token=params.get("token", ""))
+        results = await self.engine.run_graphql_assessment(url, token=params.get("token", ""))
         return {"status": "success", "findings": results.get("findings_saved", 0)}
 
     async def _do_jwt(self, params: dict) -> dict:
         token = params.get("token", "")
         if not token:
             return {"status": "skipped", "reason": "no JWT token in state"}
-        from wardenstrike.modules.scanner.jwt_attacks import JWTAttacker
-        attacker = JWTAttacker(self.config, self.db, self.engagement_id)
-        results = await attacker.run(token, target_url=params.get("target_url", ""))
+        results = await self.engine.run_jwt_attacks(
+            token, target_url=params.get("target_url", ""))
         return {"status": "success", "findings": results.get("findings_saved", 0)}
 
     async def _do_oauth(self, target: str, params: dict) -> dict:
-        from wardenstrike.modules.scanner.oauth_tester import OAuthTester
-        tester = OAuthTester(self.config, self.db, self.engagement_id)
-        results = await tester.run(target, client_id=params.get("client_id", ""))
+        results = await self.engine.run_oauth_assessment(
+            target, client_id=params.get("client_id", ""))
         return {"status": "success", "findings": results.get("findings_saved", 0)}
 
     async def _do_cloud(self, params: dict) -> dict:
-        from wardenstrike.modules.cloud.cloud_engine import CloudEngine
-        engine = CloudEngine(self.config, self.db, self.engagement_id)
         provider = params.get("provider", "all")
-        if provider == "aws":
-            results = await engine.scan_aws()
-        elif provider == "gcp":
-            results = await engine.scan_gcp()
-        elif provider == "azure":
-            results = await engine.scan_azure()
-        else:
-            results = await engine.scan_all()
+        results = await self.engine.run_cloud_assessment(provider=provider)
         total = sum(len(v) for v in results.values() if isinstance(v, list))
         return {"status": "success", "findings": total}
 
     async def _do_osint(self, target: str, params: dict) -> dict:
-        from wardenstrike.modules.osint.osint_engine import OSINTEngine
-        engine = OSINTEngine(self.config, self.db, self.engagement_id)
-        results = await engine.run(target, deep=params.get("deep", False))
+        results = await self.engine.run_osint(target, deep=params.get("deep", False))
         return {"status": "success", "data_points": results.get("total", 0)}
 
     async def _do_ad(self, target: str, params: dict) -> dict:
-        from wardenstrike.modules.internal.ad_engine import ADEngine
-        engine = ADEngine(self.config, self.db, self.engagement_id)
-        results = await engine.run(
+        results = await self.engine.run_ad_assessment(
             target=target,
             domain=params.get("domain", ""),
             username=params.get("username", ""),
@@ -240,9 +223,8 @@ class AutopilotAgent:
         return {"status": "success", "findings": results.get("findings_saved", 0)}
 
     async def _do_web3(self, target: str, params: dict) -> dict:
-        from wardenstrike.modules.web3.contract_analyzer import ContractAnalyzer
-        analyzer = ContractAnalyzer(self.config, self.db, self.engagement_id)
-        results = await analyzer.run(target, contract_address=params.get("contract_address", ""))
+        results = await self.engine.run_web3_audit(
+            target, contract_address=params.get("contract_address", ""))
         return {"status": "success", "findings": results.get("findings_saved", 0)}
 
     async def _do_analyze(self) -> dict:
